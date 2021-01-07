@@ -18,91 +18,161 @@
         box-shadow: 7px 7px 7px -1px #eee;
       }
       em { cursor: pointer; }
-      table {
+      #app table, select, form {
         font-size: x-small;
       }
-      table td {
+      #app table td {
         text-align: center;
+      }
+      #app table th:first-child, table td:first-child {
+         width: 18%;
       }
       .w3-border {
         border-radius: 3px;
       }
-      h3 {
-        width: 80%;
+      h6 {
+        width: 50%;
         margin: 0 auto;
+      }
+      #timers form input {
+        width: 20%;
+        height: 15px;
+        border: 1px solid #ccc;
+      }
+      #timers button {
+        border: none;
+      }
+      td[id^=nix-] {
+        cursor: pointer;
       }
     </style>
   </head>
   <body>
-    <h3> kitchen timer </h3>
+    <h6> kitchen timer </h6>
     <div id="timers" class="panel">
-      <em>+</em>
-      <table id="timerList">
-        <tr>
-          <th> amount </th>
-          <th> unit </th>
-          <th> seconds remaining </th>
-          <th> time remaining </th>
-          <th> progress </th>
-        <tr>
-        <tr id='t1'></tr>
-        <tr id='t2'></tr>
-        <tr id='t3'></tr>
-      </table>
+      <form name="nextTimer">
+        <input name="nextItem" type="text" placeholder="Pizza"/>
+        <input name="nextAmount" type="number" placeholder="60"/>
+        <select name="nextUnit">
+          <option value="seconds"> seconds </option>
+          <option value="minutes"> minutes </option>
+          <option value="hours"> hours </option>
+          <option value="days"> days </option>
+        </select>
+        <button name="add"> + </button>
+      </form>
+      <div id="app"></div>
     </div>
   </body>
-  <script src="https://numberjs.dragonwrench.com/js/number.js"></script>
+  <script src="/js/number.js"></script>
+  <script src="/js/model.js"> </script>
   <script>
-
-    //baked with the UI above
-
-    function Timer(amount, unit, rowId) {
-        //untility functions (maybe namespace them?)
-        const secondsFromNow   = (milliSeconds) => Math.floor(milliSeconds/1000)
-        const hoursRemaining   = (s)            => `${Math.floor(s/3600)}`.padStart(2, '0');
-        const minutesRemaining = (s)            => `${Math.floor((s % 3600)/60)}`.padStart(2, '0');
-        const secondsRemaining = (s)            => `${Math.floor(s%60)}`.padStart(2, '0');
-        const timeRemaining    = (s)            => [hoursRemaining(s), minutesRemaining(s), secondsRemaining(s)].join(':');
-        const row              = (amount, unit, r, t, p) => { 
-          return `
-              <td> ${amount} </td>
-              <td> ${unit} </td>
-              <td> ${r} </td>
-              <td> ${t}</td>
-              <td style="width: 100%"> 
-                <div class="w3-border">
-                  <div class="w3-grey" style="height:11px;width:${p}%"></div>
-                </div>
-              </td>`;
-        };
-        this.amount = amount;
-        this.unit = unit;
-        this.duration = (this.amount)[this.unit](); //wild and whack but see this as (10).seconds() or (10)["seconds"]()
-                                                    //see examples are here: http://numberjs.dragonwrench.com/
-        this.rowId = rowId;
-        this.rowElement = document.getElementById(this.rowId);
-        this.timer = this.duration.from_now();      //create a future timestamp using numberjs library
-        this.rowElement.innerHTML = 
-          row(amount, 
-              unit, 
-              secondsFromNow(this.timer - new Date), 
-              timeRemaining(secondsFromNow(this.timer - new Date)), 
-              0);
-        this.start = () => {
-          this.interval = setInterval(() => {
-             let r1 = this.timer - new Date(); //remaining time in milliSeconds
-             let p1 = (1 - r1/this.duration) * 100;
-             let s1 = secondsFromNow(r1);      //remaining time in seconds
-             this.rowElement.innerHTML = row(amount, unit, s1, timeRemaining(s1), p1);
-             if(s1 < 0) {
-               this.rowElement.innerHTML = row(amount, unit, 0, timeRemaining(0), 100);
-               clearInterval(this.interval);
-             };
-          }, 1000);
-        }
+    function Timer(item, amount, unit, rowId, ttl=null) {
+      //untility functions (maybe namespace them?)
+      const secondsFromNow   = (milliSeconds) => Math.floor(milliSeconds/1000)
+      const hoursRemaining   = (s)            => `${Math.floor(s / 3600)}`.padStart(2, '0');
+      const minutesRemaining = (s)            => `${Math.floor((s % 3600) / 60)}`.padStart(2, '0');
+      const secondsRemaining = (s)            => `${Math.floor(s%60)}`.padStart(2, '0');
+      const timeRemaining    = (s)            => [hoursRemaining(s), minutesRemaining(s), secondsRemaining(s)].join(':');
+      const row              = (amount, unit, r, t, p) => { 
+        return `
+          <td > ${item || '---'} </td>
+          <td> ${amount} </td>
+          <td> ${unit} </td>
+          <td> ${r} </td>
+          <td> ${t}</td>
+          <td style="width: 100%"> 
+            <div class="w3-border">
+              <div class="w3-grey" style="height:11px;width:${p}%"></div>
+            </div>
+          </td>
+          <td id="nix-${rowId}"> &#10005; </td>`;
+      };
+      this.amount = amount;
+      this.unit = unit;
+      this.duration = (this.amount)[this.unit]();            //wild and whack but see this as (10).seconds() or (10)["seconds"]()
+      this.rowId = rowId;                                    //see https://numberjs.dragonwrench.com for API examples
+      this.rowElement = document.getElementById(this.rowId);
+      this.timer = ttl || this.duration.from_now();          //create a future timestamp aka TTL
+      let r1 = this.timer - new Date;                        //remaining time in milliSeconds
+      let p1 = (1 - r1/this.duration) * 100;
+      let s1 = secondsFromNow(r1);                           //remaining time in seconds
+      this.rowElement.innerHTML = (!ttl)? row(amount, unit, secondsFromNow(this.timer - new Date), timeRemaining(secondsFromNow(this.timer - new Date)), 0)
+                                        : row(amount, unit, s1, timeRemaining(s1), p1);
+      this.start = () => {
+        this.interval = setInterval(() => {
+          let r1 = this.timer - new Date;                    //remaining time in milliSeconds
+          let p1 = (1 - r1/this.duration) * 100;
+          let s1 = secondsFromNow(r1);                       //remaining time in seconds
+          this.rowElement.innerHTML = row(amount, unit, s1, timeRemaining(s1), p1);
+          if(s1 < 0) {
+            this.rowElement.innerHTML = row(amount, unit, 0, timeRemaining(0), 100);
+            clearInterval(this.interval);
+          };
+          document.querySelectorAll('td[id^=nix-]').forEach((el) => {
+            el.onclick = function(e) {
+              //trigger event I suppose? to delete
+              //which has to be managed back in the manager
+              //console.log(e.target.id.split("-")[1])
+              let id = e.target.id.split("-")[1];
+              //document.kitchen.create(document.kitchen.data().filter((row) => (row.id != id)), {noIndex: true}).display();
+              document.kitchen.destroy(id);
+            }
+          })
+        }, 500);
+        return this.timer;
+      }
     }
-    (new Timer(20, 'minutes', 't1')).start();
-    (new Timer(11.5, 'minutes', 't2')).start();
-    (new Timer(0.5, 'hours', 't3')).start();
+
+    function KitchenManager(args) {
+      Model.apply(this,args);
+      this.create(args); //will add the id attribute to each timer aka row
+      this.display = () => {
+        let rows = this.data().map(
+          (row) => `<tr id='${row.id}'></tr>`
+        ).join('');
+        let default_html = `
+          <table id="timerList">
+            <tr>
+              <th> item </th>
+              <th> amount </th>
+              <th> unit </th>
+              <th> seconds remaining </th>
+              <th> time remaining </th>
+              <th> progress </th>
+              <th> </th>
+            </tr>
+            ${rows}
+          </table>
+        `;
+        document.getElementById('app').innerHTML = default_html;
+        this.data().forEach((row) => {
+          row.ttl = (new Timer(row.item, row.amount, row.unit, row.id, row.ttl)).start()
+        });
+      }
+      this.display();
+    }
+    //start a default timer
+    document.kitchen = new KitchenManager(
+      [
+        {
+          item: 'Chicken',
+          amount: 30,
+          unit: 'minutes',
+        },
+      ]
+    );
+    //add a new timer
+    document.nextTimer.add.onclick = (e) => {
+      e.preventDefault();
+      document.kitchen.create({
+        item: document.nextTimer.nextItem.value,
+        amount: parseFloat(document.nextTimer.nextAmount.value || 60),
+        unit: document.nextTimer.nextUnit.value
+      }).display()
+    }
+
+
+    
   </script>
 </html>
