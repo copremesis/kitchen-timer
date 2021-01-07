@@ -1,0 +1,108 @@
+<html>
+  <head>
+    <!--remove this dep overkill for two classes-->
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+      body {
+        color: #666;
+      }
+      #timers {
+        width: 50%;
+        margin: 0 auto;
+      }
+      .panel {
+        margin-top: 100px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        padding: 10px;
+        box-shadow: 7px 7px 7px -1px #eee;
+      }
+      em { cursor: pointer; }
+      table {
+        font-size: x-small;
+      }
+      table td {
+        text-align: center;
+      }
+      .w3-border {
+        border-radius: 3px;
+      }
+      h3 {
+        width: 80%;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h3> kitchen timer </h3>
+    <div id="timers" class="panel">
+      <em>+</em>
+      <table id="timerList">
+        <tr>
+          <th> amount </th>
+          <th> unit </th>
+          <th> seconds remaining </th>
+          <th> time remaining </th>
+          <th> progress </th>
+        <tr>
+        <tr id='t1'></tr>
+        <tr id='t2'></tr>
+        <tr id='t3'></tr>
+      </table>
+    </div>
+  </body>
+  <script src="https://numberjs.dragonwrench.com/js/number.js"></script>
+  <script>
+
+    //baked with the UI above
+
+    function Timer(amount, unit, rowId) {
+        //untility functions (maybe namespace them?)
+        const secondsFromNow   = (milliSeconds) => Math.floor(milliSeconds/1000)
+        const hoursRemaining   = (s)            => `${Math.floor(s/3600)}`.padStart(2, '0');
+        const minutesRemaining = (s)            => `${Math.floor((s % 3600)/60)}`.padStart(2, '0');
+        const secondsRemaining = (s)            => `${Math.floor(s%60)}`.padStart(2, '0');
+        const timeRemaining    = (s)            => [hoursRemaining(s), minutesRemaining(s), secondsRemaining(s)].join(':');
+        const row              = (amount, unit, r, t, p) => { 
+          return `
+              <td> ${amount} </td>
+              <td> ${unit} </td>
+              <td> ${r} </td>
+              <td> ${t}</td>
+              <td style="width: 100%"> 
+                <div class="w3-border">
+                  <div class="w3-grey" style="height:11px;width:${p}%"></div>
+                </div>
+              </td>`;
+        };
+        this.amount = amount;
+        this.unit = unit;
+        this.duration = (this.amount)[this.unit](); //wild and whack but see this as (10).seconds() or (10)["seconds"]()
+                                                    //see examples are here: http://numberjs.dragonwrench.com/
+        this.rowId = rowId;
+        this.rowElement = document.getElementById(this.rowId);
+        this.timer = this.duration.from_now();      //create a future timestamp using numberjs library
+        this.rowElement.innerHTML = 
+          row(amount, 
+              unit, 
+              secondsFromNow(this.timer - new Date), 
+              timeRemaining(secondsFromNow(this.timer - new Date)), 
+              0);
+        this.start = () => {
+          this.interval = setInterval(() => {
+             let r1 = this.timer - new Date(); //remaining time in milliSeconds
+             let p1 = (1 - r1/this.duration) * 100;
+             let s1 = secondsFromNow(r1);      //remaining time in seconds
+             this.rowElement.innerHTML = row(amount, unit, s1, timeRemaining(s1), p1);
+             if(s1 < 0) {
+               this.rowElement.innerHTML = row(amount, unit, 0, timeRemaining(0), 100);
+               clearInterval(this.interval);
+             };
+          }, 1000);
+        }
+    }
+    (new Timer(20, 'minutes', 't1')).start();
+    (new Timer(11.5, 'minutes', 't2')).start();
+    (new Timer(0.5, 'hours', 't3')).start();
+  </script>
+</html>
