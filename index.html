@@ -135,6 +135,7 @@
         let rows = JSON.parse(localStorage.ktimer)
         this.truncate();
         this.create(rows.data, {noIndex: true});
+        this.setIndex(rows.offset);
         this.display(); //restart new workers
       }
     }
