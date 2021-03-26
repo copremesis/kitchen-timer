@@ -30,7 +30,7 @@
       .w3-border {
         border-radius: 3px;
       }
-      h6 {
+      h3 {
         width: 50%;
         margin: 0 auto;
       }
@@ -52,7 +52,7 @@
     </style>
   </head>
   <body>
-    <h6> kitchen timer </h6>
+    <h3> kitchen timer </h3>
     <div id="timers" class="panel">
       <form name="nextTimer">
         <input name="nextItem" type="text" placeholder="Pizza"/>
@@ -68,24 +68,23 @@
       <div id="app"></div>
     </div>
   </body>
-  <script src="/js/number.js"></script>
-  <script src="/js/model.js"> </script>
+  <script src="https://numberjs.dragonwrench.com/js/number.js"></script>
+  <script src="https://merv.dragonwrench.com/js/model.js"> </script>
   <script>
     function Timer(item, amount, unit, rowId, ttl=null) {
-      //untility functions (maybe namespace them?)
       const secondsFromNow   = (milliSeconds) => Math.floor(milliSeconds/1000)
       const hoursRemaining   = (s)            => `${Math.floor(s / 3600)}`.padStart(2, '0');
       const minutesRemaining = (s)            => `${Math.floor((s % 3600) / 60)}`.padStart(2, '0');
       const secondsRemaining = (s)            => `${Math.floor(s%60)}`.padStart(2, '0');
       const timeRemaining    = (s)            => [hoursRemaining(s), minutesRemaining(s), secondsRemaining(s)].join(':');
-      const row              = (amount, unit, r, t, p) => { 
+      const rowMarkdown      = (amount, unit, r, t, p) => {
         return `
           <td > ${item || '---'} </td>
           <td> ${amount} </td>
           <td> ${unit} </td>
           <td> ${r} </td>
           <td> ${t}</td>
-          <td style="width: 100%"> 
+          <td style="width: 100%">
             <div class="w3-border">
               <div class="w3-grey" style="height:11px;width:${p}%"></div>
             </div>
@@ -101,39 +100,53 @@
       let r1 = this.timer - new Date;                        //remaining time in milliSeconds
       let p1 = (1 - r1/this.duration) * 100;
       let s1 = secondsFromNow(r1);                           //remaining time in seconds
-      if (r1 > 0) {
-        this.rowElement.innerHTML = (!ttl)? row(amount, unit, secondsFromNow(this.timer - new Date), timeRemaining(secondsFromNow(this.timer - new Date)), 0)
-                                          : row(amount, unit, s1, timeRemaining(s1), p1);
+      if(s1 > 0) {
+      this.rowElement.innerHTML = (!ttl)? rowMarkdown(amount, unit, secondsFromNow(this.timer - new Date), timeRemaining(secondsFromNow(this.timer - new Date)), 0)
+                                        : rowMarkdown(amount, unit, s1, timeRemaining(s1), p1);
       } else {
-        this.rowElement.innerHTML = row(amount, unit, 0, timeRemaining(0), 100);
+            this.rowElement.innerHTML = rowMarkdown(amount, unit, 0, timeRemaining(0), 100);
       }
       this.start = () => {
         this.interval = setInterval(() => {
           let r1 = this.timer - new Date;                    //remaining time in milliSeconds
           let p1 = (1 - r1/this.duration) * 100;
           let s1 = secondsFromNow(r1);                       //remaining time in seconds
-          this.rowElement.innerHTML = row(amount, unit, s1, timeRemaining(s1), p1);
+          this.rowElement.innerHTML = rowMarkdown(amount, unit, s1, timeRemaining(s1), p1);
           if(s1 < 0 || r1 < 0) {
-            this.rowElement.innerHTML = row(amount, unit, 0, timeRemaining(0), 100);
+            this.rowElement.innerHTML = rowMarkdown(amount, unit, 0, timeRemaining(0), 100);
             clearInterval(this.interval);
           };
           document.querySelectorAll('td[id^=nix-]').forEach((el) => {
             el.onclick = function(e) {
-              //trigger event I suppose? to delete
-              //which has to be managed back in the manager
-              //console.log(e.target.id.split("-")[1])
               let id = e.target.id.split("-")[1];
-              //document.kitchen.create(document.kitchen.data().filter((row) => (row.id != id)), {noIndex: true}).display();
               document.kitchen.destroy(id);
+              document.kitchen.save(); //save to storage or push to pubsub //sync
             }
           })
         }, 500);
         return this.timer;
       }
     }
-
+    //extension of model.js
+    //for localStorage methods save & restore
+    function LocalStorage(args) {
+      this.save = () => {
+        localStorage.ktimer = JSON.stringify({ data: this.data(), offset: this.index() })
+      }
+      this.restore = (closure) => {
+        closure = closure || function() {}
+        closure();  //cleanup kill workers
+        let rows = JSON.parse(localStorage.ktimer)
+        this.truncate();
+        this.create(rows.data, {noIndex: true});
+        this.setIndex(rows.offset);
+        this.display(); //restart new workers
+      }
+    }
     function KitchenManager(args) {
       Model.apply(this,args);
+      LocalStorage.apply(this,args);
+      this.timers = [];
       this.create(args); //will add the id attribute to each timer aka row
       this.display = () => {
         let rows = this.data().map(
@@ -155,11 +168,27 @@
         `;
         document.getElementById('app').innerHTML = default_html;
         this.data().forEach((row) => {
-          row.ttl = (new Timer(row.item, row.amount, row.unit, row.id, row.ttl)).start()
+          let t = new Timer(row.item, row.amount, row.unit, row.id, row.ttl);
+          this.timers.push(t);
+          row.ttl = t.start();
         });
+        return this;
       }
+
+      //override parent method?
+      this._restore = this.restore; //backup original
+      this.restore = () => {
+        this._restore(() => { this.timers.map((timer) => clearInterval(timer.interval)); this.timers = [] })
+      }
+      //now invoke save on create or delete (there's no update yet)
+      if(localStorage.ktimer) {
+        this.restore()
+        return
+      }
+
       this.display();
     }
+
     //start a default timer
     document.kitchen = new KitchenManager(
       [
@@ -167,6 +196,16 @@
           item: 'Chicken',
           amount: 30,
           unit: 'minutes',
+        },
+        {
+          item: 'Brisket',
+          amount: 6,
+          unit: 'hours',
+        },
+        {
+          item: 'Proof Dough',
+          amount: 1.5,
+          unit: 'hours',
         },
       ]
     );
@@ -177,10 +216,11 @@
         item: document.nextTimer.nextItem.value,
         amount: parseFloat(document.nextTimer.nextAmount.value || 60),
         unit: document.nextTimer.nextUnit.value
-      }).display()
+      }).display().save();
     }
-
-
-    
+    document.tests = () => {
+      console.log(JSON.stringify(document.kitchen.data(), null, 2))
+      console.log(document.kitchen.timers.map((timer) => timer.interval))
+    }
   </script>
 </html>
