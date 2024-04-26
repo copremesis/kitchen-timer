@@ -1,19 +1,24 @@
 var Model = function(args) {
-  var rows = [], 
+  let rows = [],
       idx=0;
+/*
   let append_request_header = (key, value) => {
     $.ajaxSetup({
       beforeSend: (xhr) => {
         xhr.setRequestHeader(key, value);
       }
-    }) 
+    })
   }
-  rows.find_by = function(key, value, callback) {
+*/
+  //decoration of native objects is frowned upon
+
+  const find_by = function(key, value, callback) {
+    //callback = callback || function () {};
     if (callback) {
-      callback(this);
+      callback(rows);
     } else {
-      for (var i = 0; i<this.length; i++) {
-        if (this[i][key] === value) {
+      for (var i = 0; i<rows.length; i++) {
+        if (rows[i][key] === value) {
           return rows[i];
         }
       }
@@ -23,8 +28,10 @@ var Model = function(args) {
   this.find_by = function(key_value, callback) {
     var key = Object.keys(key_value)[0],
         value = key_value[key];
-    return rows.find_by(key, value, callback);
+    return find_by(key, value, callback);
   }
+  this.setIndex = (n) => idx = n;
+  this.index = () => idx;
   this.first = function() { return rows[0]; }
   this.second = function() { return rows[1]; }
   this.last  = function() { return rows[rows.length-1]; }
@@ -48,13 +55,13 @@ var Model = function(args) {
 
 //this is where assumptions begin
 //as we need a way to match the exact row
-//this assumes there's a primary key 
+//this assumes there's a primary key
 //if not specified then there is one automatically generated called `id`
-  this.update = function(key, keyname='id', update_row, callback) { 
-     callback = callback || function () {};  
+  this.update = function(key, keyname='id', update_row, callback) {
+     callback = callback || function () {};
      switch(keyname) {
       case 'id':
-        let row = rows.find_by('id', key);
+        let row = find_by('id', key);
         rows[rows.indexOf(row)] = Object.assign(row, update_row);
         callback();
         return rows[rows.indexOf(row)];
@@ -65,7 +72,7 @@ var Model = function(args) {
      }
   }
 
-  this.destroy = function(key, keyname='id') { 
+  this.destroy = function(key, keyname='id') {
     //console.log(key, keyname, rows.filter((row) => (row[keyname] !== key)));
     this.create(rows.filter((row) => (row[keyname] != key)), {noIndex: true}).display();
   }
@@ -80,32 +87,10 @@ var Model = function(args) {
   }
 
   this.slurp_xhr = function(url, options) {
-    var that = this, 
-        options = options || {};
-
-    //check for headers are present
-    if(options.headers) {
-      for (var key in options.headers) {
-        //some dog shit condition for bad js assume there are main object prototypes!!
-        append_request_header(key, options.headers[key])
-        //oddly this can be only performed once ...
-        //I wonder if a hash is being used in the library cause append sounds like it'll
-        //keep adding additional headers making each subsequent request slower
-      } 
-    }
-
-    //should use $.ajax to support all the REST CRUD verbs
-    //rather than the wrappers
-    $.getJSON(url,function(json) {
-      if(rows.length > 0) {
-        delete rows;
-        rows = [];
-      }
-      if(options.key) that.create(json[options.key]);
-      else that.create(json);
-      that.display(options.posthook);
-    });
-    
+    //wip could also be an override plugin vs defined here
+    //see LocalStorage as an override plugin
+    //we can have 3 different ways ie:
+    //axios/fetch/jquery 
   }
 
   this.each = function(closure) {

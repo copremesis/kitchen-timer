@@ -1,0 +1,70 @@
+h6 {
+  font-family: Copperplate, Papyrus, fantasy;
+}
+body {
+  background: #111; 
+  color: teal;
+  text-transform: uppercase;
+  font-family: Copperplate, Papyrus, fantasy;
+}
+input::placeholder {
+  color: teal;
+  opacity: 0.4;
+}
+#timers {
+  width: 90%;
+  margin: 0 auto;
+}
+.panel {
+  margin-top: 100px;
+/*
+  border: 1px solid #365353;
+*/
+  border-radius: 3px;
+  padding: 10px;
+/*
+  box-shadow: 12px 12px 12px -11px teal;
+*/
+}
+em { cursor: pointer; }
+#app table, select, input, button {
+  font-size: x-small;
+  color: teal;
+  background-color: #111;
+  text-transform: uppercase;
+  font-family: Copperplate, Papyrus, fantasy;
+}
+#app table {
+  border: 1px solid #365353;
+  border-radius: 3px;
+  padding: 10px;
+}
+#app table td {
+  text-align: center;
+  padding: 5px;
+}
+#app table th:first-child, table td:first-child {
+   width: 18%;
+}
+.w3-border {
+  border-radius: 3px;
+}
+h6 {
+  width: 50%;
+  margin: 0 auto;
+}
+#timers form input, #timers form select {
+  width: 20%;
+  height: 15px;
+  border: 1px solid #365353;
+  border-radius: 3px;
+}
+#timers button {
+  height: 15px;
+  border: 1px solid #365353;
+  line-height: 10px;
+  border-radius: 3px;
+}
+td[id^=nix-] {
+  cursor: pointer;
+}

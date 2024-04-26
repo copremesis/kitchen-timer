@@ -2,60 +2,14 @@
   <head>
     <!--remove this dep overkill for two classes-->
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="css/current.css">
     <!--fake ico keeps noise from happening from browser client-->
     <link rel="icon" href="data:,">
-    <style>
-      body {
-        color: #666;
-      }
-      #timers {
-        width: 50%;
-        margin: 0 auto;
-      }
-      .panel {
-        margin-top: 100px;
-        border: 1px solid #ddd;
-        border-radius: 3px;
-        padding: 10px;
-        box-shadow: 7px 7px 7px -1px #eee;
-      }
-      em { cursor: pointer; }
-      #app table, select, form {
-        font-size: x-small;
-      }
-      #app table td {
-        text-align: center;
-      }
-      #app table th:first-child, table td:first-child {
-         width: 18%;
-      }
-      .w3-border {
-        border-radius: 3px;
-      }
-      h6 {
-        width: 50%;
-        margin: 0 auto;
-      }
-      #timers form input, #timers form select {
-        width: 20%;
-        height: 15px;
-        border: 1px solid #ccc;
-        border-radius: 3px;
-      }
-      #timers button {
-        height: 15px;
-        border: 1px solid #ccc;
-        line-height: 13px;
-        border-radius: 3px;
-      }
-      td[id^=nix-] {
-        cursor: pointer;
-      }
-    </style>
   </head>
   <body>
     <h6> persistent kitchen timer </h6>
     <div id="timers" class="panel">
+<!--simple-->
       <form name="nextTimer">
         <input name="nextItem" type="text" placeholder="Pizza"/>
         <input name="nextAmount" type="number" placeholder="60"/>
@@ -67,170 +21,18 @@
         </select>
         <button name="add">&#x2B;</button>
       </form>
+<!--simple-->
       <div id="app"></div>
     </div>
   </body>
+  <script src="js/number.js"></script>
 <!--
-  <script src="https://numberjs.dragonwrench.com/js/number.js"></script>
+  <script src="js/model.js"> </script>
 -->
-  <script src="https://dragonwrench.s3-us-west-2.amazonaws.com/js/number.js"></script>
-  <script src="https://merv.dragonwrench.com/js/model.js"> </script>
-  <script>
-    function Timer(item, amount, unit, rowId, ttl=null) {
-      //untility functions (maybe namespace them?)
-      const secondsFromNow   = (milliSeconds) => Math.floor(milliSeconds/1000)
-      const hoursRemaining   = (s)            => `${Math.floor(s / 3600)}`.padStart(2, '0');
-      const minutesRemaining = (s)            => `${Math.floor((s % 3600) / 60)}`.padStart(2, '0');
-      const secondsRemaining = (s)            => `${Math.floor(s%60)}`.padStart(2, '0');
-      const timeRemaining    = (s)            => [hoursRemaining(s), minutesRemaining(s), secondsRemaining(s)].join(':');
-      const row              = (amount, unit, r, t, p) => { 
-        return `
-          <td > ${item || '---'} </td>
-          <td> ${amount} </td>
-          <td> ${unit} </td>
-          <td> ${r} </td>
-          <td> ${t}</td>
-          <td style="width: 100%"> 
-            <div class="w3-border">
-              <div class="w3-grey" style="height:11px;width:${p}%"></div>
-            </div>
-          </td>
-          <td id="nix-${rowId}"> &#10005; </td>`;
-      };
-      this.amount = amount;
-      this.unit = unit;
-      this.duration = (this.amount)[this.unit]();            //wild and whack but see this as (10).seconds() or (10)["seconds"]()
-      this.rowId = rowId;                                    //see https://numberjs.dragonwrench.com for API examples
-      this.rowElement = document.getElementById(this.rowId);
-      this.timer = ttl || this.duration.from_now();          //create a future timestamp aka TTL
-      let r1 = this.timer - new Date;                        //remaining time in milliSeconds
-      let p1 = (1 - r1/this.duration) * 100;
-      let s1 = secondsFromNow(r1);                           //remaining time in seconds
-      if (r1 > 0) {
-        this.rowElement.innerHTML = (!ttl)? row(amount, unit, secondsFromNow(this.timer - new Date), timeRemaining(secondsFromNow(this.timer - new Date)), 0)
-                                          : row(amount, unit, s1, timeRemaining(s1), p1);
-      } else {
-        this.rowElement.innerHTML = row(amount, unit, 0, timeRemaining(0), 100);
-      }
-      this.start = () => {
-        this.interval = setInterval(() => {
-          let r1 = this.timer - new Date;                    //remaining time in milliSeconds
-          let p1 = (1 - r1/this.duration) * 100;
-          let s1 = secondsFromNow(r1);                       //remaining time in seconds
-          this.rowElement.innerHTML = row(amount, unit, s1, timeRemaining(s1), p1);
-          if(s1 < 0 || r1 < 0) {
-            this.rowElement.innerHTML = row(amount, unit, 0, timeRemaining(0), 100);
-            clearInterval(this.interval);
-          };
-          document.querySelectorAll('td[id^=nix-]').forEach((el) => {
-            el.onclick = function(e) {
-              //trigger event I suppose? to delete
-              //which has to be managed back in the manager
-              //console.log(e.target.id.split("-")[1])
-              let id = e.target.id.split("-")[1];
-              //document.kitchen.create(document.kitchen.data().filter((row) => (row.id != id)), {noIndex: true}).display();
-              document.kitchen.destroy(id);
-              document.kitchen.save();
-            }
-          })
-        }, 500);
-        return this.timer;
-      }
-    }
-    //extension of model.js
-    //for localStorage methods save & restore
-    function LocalStorage(args) {
-      this.save = () => {
-        localStorage.ktimer = JSON.stringify({ data: this.data(), offset: this.index() })
-      }
-      this.restore = (closure) => {
-        closure = closure || function() {}
-        closure();  //cleanup kill workers
-        let rows = JSON.parse(localStorage.ktimer)
-        this.truncate();
-        this.create(rows.data, {noIndex: true});
-        this.setIndex(rows.offset);
-        this.display(); //restart new workers
-      }
-    }
-    function KitchenManager(args) {
-      Model.apply(this,args);
-      LocalStorage.apply(this,args);
-      this.timers = [];
-      this.create(args); //will add the id attribute to each timer aka row
-      this.display = () => {
-        let rows = this.data().map(
-          (row) => `<tr id='${row.id}'></tr>`
-        ).join('');
-        let default_html = `
-          <table id="timerList">
-            <tr>
-              <th> item </th>
-              <th> amount </th>
-              <th> unit </th>
-              <th> seconds remaining </th>
-              <th> time remaining </th>
-              <th> progress </th>
-              <th> </th>
-            </tr>
-            ${rows}
-          </table>
-        `;
-        document.getElementById('app').innerHTML = default_html;
-        this.data().forEach((row) => {
-          let t = new Timer(row.item, row.amount, row.unit, row.id, row.ttl);
-          this.timers.push(t);
-          row.ttl = t.start();
-        });
-        return this;
-      }
-
-      //override parent method?
-      this._restore = this.restore; //backup original
-      this.restore = () => {
-        this._restore(() => { this.timers.map((timer) => clearInterval(timer.interval)); this.timers = [] })
-      }
-      //now invoke save on create or delete (there's no update yet)
-      if(localStorage.ktimer) {
-        this.restore()
-        return
-      }
-
-      this.display();
-    }
-
-    //start a default timer
-    document.kitchen = new KitchenManager(
-      [
-        {
-          item: 'Chicken',
-          amount: 30,
-          unit: 'minutes',
-        },
-        {
-          item: 'Brisket',
-          amount: 6,
-          unit: 'hours',
-        },
-        {
-          item: 'Proof Dough',
-          amount: 1.5,
-          unit: 'hours',
-        },
-      ]
-    );
-    //add a new timer
-    document.nextTimer.add.onclick = (e) => {
-      e.preventDefault();
-      document.kitchen.create({
-        item: document.nextTimer.nextItem.value,
-        amount: parseFloat(document.nextTimer.nextAmount.value || 60),
-        unit: document.nextTimer.nextUnit.value
-      }).display().save();
-    }
-    document.tests = () => {
-      console.log(JSON.stringify(document.kitchen.data(), null, 2))
-      console.log(document.kitchen.timers.map((timer) => timer.interval))
-    }
-  </script>
+  <script src="http://localhost:8000/js/model.js"> </script>
+  <script src="js/notify.js"> </script>
+  <script src="js/timer.js"> </script>
+  <script src="js/local-storage.js"> </script>
+  <script src="js/kitchen-manager.js"> </script>
+  <script src="js/main.js"> </script>
 </html>
