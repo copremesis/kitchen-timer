@@ -23,13 +23,33 @@
       </form>
 <!--simple-->
       <div id="app"></div>
+
+      <input id="amount" type="number">
+      <select id="unit">
+        <option value="seconds"> seconds </option>
+        <option value="hours"> hours </option>
+        <option value="days"> days </option>
+      </select>
+      <select id="direction">
+        <option value="from_now"> from now </option>
+        <option value="ago"> ago </option>
+      </select>
+      <span id="result"></span>
+      <script>
+        let g = (id) => document.getElementById(id);
+          g('amount').onchange =
+          g('unit').onchange =
+          g('direction').onchange = () => {
+            g('result').innerHTML = (parseInt(g('amount').value))
+                                    .send(g('unit').value)
+                                    .send(g('direction').value)
+                                    .to_human()
+        }
+      </script>
     </div>
   </body>
   <script src="js/number.js"></script>
-<!--
   <script src="js/model.js"> </script>
--->
-  <script src="http://localhost:8000/js/model.js"> </script>
   <script src="js/notify.js"> </script>
   <script src="js/timer.js"> </script>
   <script src="js/local-storage.js"> </script>
